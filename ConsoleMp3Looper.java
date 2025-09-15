@@ -1,97 +1,47 @@
-import java.io.File;
+import javazoom.jl.player.advanced.AdvancedPlayer;
+import java.io.FileInputStream;
 import java.util.Scanner;
-import javafx.application.Application;
-import javafx.scene.media.Media;
-import javafx.scene.media.MediaPlayer;
-import javafx.stage.Stage;
-import javafx.util.Duration;
 
-public class ConsoleMp3Looper extends Application {
-    private static String filePath;
-    private static double startTime;
-    private static double endTime;
-    private static int loops;
-
-    @Override
-    public void start(Stage stage) {
-        try {
-            File file = new File(filePath);
-            if (!file.exists()) {
-                System.out.println("File not found!");
-                return;
-            }
-
-            Media media = new Media(file.toURI().toString());
-            MediaPlayer player = new MediaPlayer(media);
-
-            player.setOnReady(() -> {
-                double songLength = media.getDuration().toSeconds();
-
-                if (endTime <= 0 || endTime > songLength) {
-                    endTime = songLength;
-                }
-                if (startTime < 0 || startTime >= endTime) {
-                    startTime = 0;
-                }
-
-                player.setStartTime(Duration.seconds(startTime));
-                player.setStopTime(Duration.seconds(endTime));
-
-                if (loops == 0) {
-                    player.setCycleCount(MediaPlayer.INDEFINITE);
-                    System.out.println("Looping forever...");
-                } else {
-                    player.setCycleCount(loops);
-                    System.out.println("Looping " + loops + " times...");
-                }
-
-                System.out.println("Playing from " + formatTime(startTime) +
-                                   " to " + formatTime(endTime));
-                player.play();
-            });
-
-            stage.setTitle("Console MP3 Looper");
-            stage.show();
-
-        } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
-        }
-    }
+public class SimpleMp3Looper {
 
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
+        try (Scanner sc = new Scanner(System.in)) {
+            // Ask user for file path
+            System.out.print("Enter MP3 file path: ");
+            String filePath = sc.nextLine();
 
-        System.out.print("Enter MP3 file path: ");
-        filePath = sc.nextLine();
+            // Ask user for start and end times (in seconds)
+            System.out.print("Enter start time (seconds): ");
+            int startSec = sc.nextInt();
 
-        System.out.print("Enter start time (mm:ss or seconds): ");
-        startTime = parseTime(sc.nextLine());
+            System.out.print("Enter end time (seconds): ");
+            int endSec = sc.nextInt();
 
-        System.out.print("Enter end time (mm:ss or seconds): ");
-        endTime = parseTime(sc.nextLine());
+            System.out.print("How many loops? ");
+            int loops = sc.nextInt();
 
-        System.out.print("Enter loop count (0 = forever): ");
-        loops = sc.nextInt();
-
-        launch(args);
-    }
-
-    // parse "mm:ss" or "ss" into seconds
-    private static double parseTime(String input) {
-        if (input.contains(":")) {
-            String[] parts = input.split(":");
-            int minutes = Integer.parseInt(parts[0]);
-            int seconds = Integer.parseInt(parts[1]);
-            return minutes * 60 + seconds;
-        } else {
-            return Double.parseDouble(input);
+            for (int i = 0; i < loops; i++) {
+                playSegment(filePath, startSec, endSec);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    // helper to format seconds into mm:ss
-    private static String formatTime(double seconds) {
-        int m = (int) seconds / 60;
-        int s = (int) seconds % 60;
-        return String.format("%d:%02d", m, s);
+    private static void playSegment(String filePath, int startSec, int endSec) {
+        try {
+            FileInputStream fis = new FileInputStream(filePath);
+            AdvancedPlayer player = new AdvancedPlayer(fis);
+
+            // JLayer plays frames (approx 26 ms each)
+            int startFrame = startSec * 38; // rough conversion (38 frames/sec)
+            int endFrame = endSec * 38;
+
+            player.play(startFrame, endFrame);
+            player.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
+
